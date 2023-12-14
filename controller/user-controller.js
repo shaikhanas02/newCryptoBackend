@@ -34,10 +34,10 @@ const Login = async (req, res) => {
         error: "Invalid username or password",
       });
     }
-
+ 
     const token = await jwt.sign({ username: user.username }, "secret", {
       expiresIn: 24,
-    });
+    }); 
 
     res.status(200).json({
       message: "Login Successful",
@@ -51,49 +51,49 @@ const Login = async (req, res) => {
   }
 };
 
-const Card = async (req, res) => {
+const Card = async (req, res) => { 
   try {
-    const { id, image, market_data } = req.body;
-    const existingCard = await WatchlistCard.findOne({ id });
+    const { id, isSave } = req.body;
 
-    if (existingCard) {
-      console.log("1");
-      console.log(id);
-      console.log(image);
-      console.log(market_data);
+    if (req.method === "POST") {
+      console.log("Creating a new card");
+      const newCard = new WatchlistCard({ id, isSave });
+      await newCard.save();
 
-      // Card already exists, update it
-      existingCard.image = image;
-      existingCard.market_data = market_data;
-      await existingCard.save();
+      res.status(200).json({ message: "Card saved successfully" });
+    } else if (req.method === "DELETE") {
+      const deletedCard = await WatchlistCard.findOneAndDelete(id); 
+      if (deletedCard) {
+        console.log("Deleting card");
+        res.status(200).json({ message: "Card deleted successfully" }); 
+      } else {
+        console.log("Card not found");
+        res.status(404).json({ message: "Card not found" });
+      }
     } else {
-      // Card doesn't exist, create a new one
-      const newCard = new WatchlistCard({ id, image, market_data });
-      await newCard.save(); 
+      res.status(405).json({ error: "Method Not Allowed" });
     }
-    
-
-    res.status(200).json({ message: "Card saved successfully" });
   } catch (error) {
-    console.error("Error saving card:", error);
+    console.error("Error handling card request:", error);
     res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
 const getWatchlist = async (req, res) => {
   try {
-    const { id } = req.query;
+    // const { id } = req.query;
 
-    const user = await WatchlistCard.findOne({ id });
+    const users = await WatchlistCard.find({});
 
-    if (!user) {
-      return res.status(404).json({
-        error: "User not found",
-      }); 
-    }
+    // if (!users || users.length === 0) {
+    //   return res.status(404).json({
+    //     error: "User not found",
+    //   });
+    // }
 
-    return res.status(200).json({
-      data: user,
+    // return
+    res.status(200).json({
+      users,
     });
   } catch (error) {
     res.status(500).json({

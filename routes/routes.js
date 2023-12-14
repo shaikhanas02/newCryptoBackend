@@ -7,6 +7,7 @@ const {Login, Register, Card, getWatchlist} = require('../controller/user-contro
 router.post('/login', Login) ;
 router.post('/register', Register) ;
 router.post('/card', Card) ;
+router.delete('/card', Card) ;
 router.get("/watchlist", getWatchlist);
 
 
