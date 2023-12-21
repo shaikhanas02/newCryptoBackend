@@ -5,8 +5,10 @@ const Routes = require("./routes/routes");
 const connection = require("./database/db");
 const cors = require("cors");
 const bodyParser = require("body-parser");
+const cookieParser = require('cookie-parser');
 
 
+app.use(cookieParser());
 app.use(express.json());
 
 app.use(cors());

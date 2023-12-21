@@ -1,6 +1,9 @@
 const User = require("../schema/user-schema");
 const WatchlistCard = require("../schema/watchlist-schema");
 const jwt = require("jsonwebtoken");
+const bcrypt = require("bcrypt");
+// const express = require("express");
+// const app = express();
 
 const Register = async (req, res) => {
   try {
@@ -24,20 +27,15 @@ const Login = async (req, res) => {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
 
-    if (!user) {
+    if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({
         error: "Invalid username or password",
       });
     }
-    if (user.password !== password) {
-      return res.status(401).json({
-        error: "Invalid username or password",
-      });
-    }
- 
-    const token = await jwt.sign({ username: user.username }, "secret", {
-      expiresIn: 24,
-    }); 
+
+    const token = jwt.sign({ username: user.username }, "secret", {
+      expiresIn: "24h",
+    });
 
     res.status(200).json({
       message: "Login Successful",
@@ -51,21 +49,28 @@ const Login = async (req, res) => {
   }
 };
 
-const Card = async (req, res) => { 
+const Card = async (req, res) => {
   try {
-    const { id, isSave } = req.body;
+    const { id } = req.body; 
+    const { authorization: token } = req.headers;
 
+    const decodedToken = jwt.verify(token.replace("Bearer ", ""), "secret");     
+    console.log(decodedToken); 
     if (req.method === "POST") {
       console.log("Creating a new card");
-      const newCard = new WatchlistCard({ id, isSave });
-      await newCard.save();
+      const newCard = new WatchlistCard({ username: decodedToken.username, 
+        id: id, }); 
+      await newCard.save(); 
 
-      res.status(200).json({ message: "Card saved successfully" });
+      res.status(200).json({ userId: id });
     } else if (req.method === "DELETE") {
-      const deletedCard = await WatchlistCard.findOneAndDelete(id); 
+      const deletedCard = await WatchlistCard.findOneAndDelete({
+        username : decodedToken.username, 
+        id: id, 
+      }); 
       if (deletedCard) {
         console.log("Deleting card");
-        res.status(200).json({ message: "Card deleted successfully" }); 
+        res.status(200).json({ message: "Card deleted successfully" });
       } else {
         console.log("Card not found");
         res.status(404).json({ message: "Card not found" });
@@ -74,30 +79,37 @@ const Card = async (req, res) => {
       res.status(405).json({ error: "Method Not Allowed" });
     }
   } catch (error) {
-    console.error("Error handling card request:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    res.status(404).json(req.body);
   }
 };
 
 const getWatchlist = async (req, res) => {
   try {
-    // const { id } = req.query;
+    const token = req.headers.authorization;
 
-    const users = await WatchlistCard.find({});
+    // Check if the token exists
+    if (!token) {
+      return res.status(401).json({
+        error: "Unauthorized - Token not provided",
+      });
+    }
 
-    // if (!users || users.length === 0) {
-    //   return res.status(404).json({
-    //     error: "User not found",
-    //   });
-    // }
+    // Extract user information from the token
+    const decodedToken = jwt.verify(token.replace("Bearer ", ""), "secret");
+    console.log(decodedToken);
+    // Assuming your WatchlistCard model has a field 'userId' to store the user's ID
+    // const userId = decodedToken.userId;
 
-    // return
+    // Find cards associated with the authenticated user
+    const userCards = await WatchlistCard.find({ username });
+
     res.status(200).json({
-      users,
+      userCards,
     });
   } catch (error) {
-    res.status(500).json({
-      error: "Server error",
+    // Handle token verification errors
+    res.status(401).json({
+      error: "Unauthorized - Invalid token",
     });
   }
 };
